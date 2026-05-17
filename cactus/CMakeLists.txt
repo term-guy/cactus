@@ -59,6 +59,13 @@ if(APPLE)
     find_library(SYSTEMCONFIGURATION_FRAMEWORK SystemConfiguration REQUIRED)
     find_library(CFNETWORK_FRAMEWORK CFNetwork REQUIRED)
 else()
+    if(NOT CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64|ARM64)$")
+        message(FATAL_ERROR
+            "Unsupported processor architecture: ${CMAKE_SYSTEM_PROCESSOR}\n"
+            "Cactus requires an ARM64/AArch64 processor (Apple Silicon, Android ARM, or ARM Linux).\n"
+            "x86/x86_64 is not supported — the engine relies on ARM NEON SIMD intrinsics."
+        )
+    endif()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=armv8.2-a+fp16+simd+dotprod+i8mm -pthread -Wall -Wextra -pedantic -O3 -Wno-missing-field-initializers")
     add_compile_definitions(
         __ARM_NEON=1
