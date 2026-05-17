@@ -783,8 +783,11 @@ def cmd_build(args):
                 sdl2_link = [f"-L{sdl2_prefix}/lib", "-lSDL2"]
                 sdl2_available = True
     else:
-        sdl2_check = subprocess.run(["pkg-config", "--exists", "sdl2"], capture_output=True)
-        if sdl2_check.returncode == 0:
+        try:
+            sdl2_check = subprocess.run(["pkg-config", "--exists", "sdl2"], capture_output=True)
+        except FileNotFoundError:
+            sdl2_check = None
+        if sdl2_check is not None and sdl2_check.returncode == 0:
             cflags = subprocess.run(["pkg-config", "--cflags", "sdl2"], capture_output=True, text=True)
             libs = subprocess.run(["pkg-config", "--libs", "sdl2"], capture_output=True, text=True)
             if cflags.returncode == 0 and libs.returncode == 0:
