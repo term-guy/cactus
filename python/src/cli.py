@@ -1722,6 +1722,39 @@ def merge_lora_adapter(base_model_id, lora_path, cache_dir=None, token=None):
     return merged_model, tokenizer
 
 
+def cmd_convert_apple(model_id, output_dir, args=None):
+    """Produce CoreML .mlpackage files for Apple NPU acceleration."""
+    token = getattr(args, 'token', None)
+    cache_dir = getattr(args, 'cache_dir', None)
+    precision = getattr(args, 'precision', 'INT4')
+    bits = "4" if "4" in str(precision) else "8"
+
+    try:
+        from .apple_convert import convert_all_for_apple, _detect_enc_types
+    except ImportError as exc:
+        print_color(RED, f"Apple conversion requires additional dependencies: {exc}")
+        return 1
+
+    try:
+        enc_types = _detect_enc_types(model_id, token)
+    except ValueError as exc:
+        print_color(YELLOW, str(exc))
+        return 0
+
+    print_color(BLUE, f"Apple CoreML encoders to build: {', '.join(enc_types)}")
+
+    from .apple_convert import convert_model_for_apple
+    for enc_type in enc_types:
+        print_color(YELLOW, f"Converting {enc_type} to CoreML...")
+        result = convert_model_for_apple(model_id, enc_type, output_dir, bits, token, cache_dir)
+        if result is None:
+            print_color(RED, f"Failed to convert {enc_type}")
+            return 1
+        print_color(GREEN, f"Saved {result.name} → {result}")
+
+    return 0
+
+
 def cmd_convert(args):
     """Convert a HuggingFace model to a custom output directory."""
     import tempfile
@@ -1782,12 +1815,19 @@ def cmd_convert(args):
 
     try:
         result = cmd_download(download_args)
-        return result
+        if result != 0:
+            return result
     finally:
         cli_module.get_weights_dir = original_get_weights
         if temp_merged_dir and Path(temp_merged_dir).exists():
             print_color(YELLOW, "Cleaning up temp directory...")
             shutil.rmtree(temp_merged_dir)
+
+    if getattr(args, 'apple', False):
+        result = cmd_convert_apple(args.model_name, output_dir, args)
+    else:
+        result = 0
+    return result
 
 
 def cmd_list(args):
@@ -2182,6 +2222,8 @@ def create_parser():
     convert_parser.add_argument('--cache-dir', help='Cache directory for HuggingFace models')
     convert_parser.add_argument('--token', help='HuggingFace API token')
     convert_parser.add_argument('--lora', help='Path to LoRA adapter (local path or HuggingFace ID) to merge before conversion')
+    convert_parser.add_argument('--apple', action='store_true',
+                                help='Also produce CoreML .mlpackage files for Apple NPU acceleration')
 
     return parser
 

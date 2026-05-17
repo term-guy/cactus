@@ -269,6 +269,7 @@ cactus build               # default static lib
 │                                      built from source)                      │
 │    --bits 1|2|3|4                    CQ quantization (default: 4)            │
 │    --token <token>                   HuggingFace API token                   │
+│    --apple                           also produce CoreML .mlpackage for NPU  │
 │    --reconvert                       force build from source                 │
 │                                                                              │
 │  cactus build                        build for ARM → build/libcactus.a       │
