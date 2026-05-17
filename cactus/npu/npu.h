@@ -1,6 +1,7 @@
 #ifndef CACTUS_NPU_H
 #define CACTUS_NPU_H
 
+#include <arm_neon.h>
 #include <vector>
 #include <string>
 #include <memory>
