@@ -14,7 +14,8 @@ Run AI models on-device with a simple Kotlin API.
 
 <!-- --8<-- [start:install] -->
 ```bash
-git clone https://github.com/cactus-compute/cactus && cd cactus && source ./setup
+git clone https://github.com/cactus-compute/cactus && cd cactus
+source ./setup
 cactus build --android
 ```
 

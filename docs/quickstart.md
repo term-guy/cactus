@@ -53,14 +53,18 @@ Install Cactus and run your first on-device AI completion.
     **From Source (macOS):**
 
     ```bash
-    git clone https://github.com/cactus-compute/cactus && cd cactus && source ./setup
+    brew install uv
+    git clone https://github.com/cactus-compute/cactus && cd cactus
+    source ./setup
     ```
 
     **From Source (Linux):**
 
     ```bash
-    sudo apt-get install python3 python3-venv python3-pip cmake build-essential libcurl4-openssl-dev
-    git clone https://github.com/cactus-compute/cactus && cd cactus && source ./setup
+    sudo apt-get install python3.12 cmake build-essential libcurl4-openssl-dev
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    git clone https://github.com/cactus-compute/cactus && cd cactus
+    source ./setup
     ```
 
 === "C++"
