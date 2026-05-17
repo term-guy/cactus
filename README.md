@@ -263,6 +263,7 @@ graph.hard_reset();
 │    --precision INT4|INT8|FP16        quantization (default: INT4)            │
 │    --lora <path>                     LoRA adapter to merge                   │
 │    --token <token>                   HuggingFace API token                   │
+│    --apple                           also produce CoreML .mlpackage for NPU  │
 │                                                                              │
 │  cactus build                        build for ARM → build/libcactus.a       │
 │    --apple                           Apple (iOS/macOS)                       │

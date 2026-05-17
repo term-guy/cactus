@@ -54,44 +54,37 @@ def export_model(model_id, token, precision):
 
 
 def export_pro_weights(model_id, bits):
-    pro_repo = PROJECT_ROOT / "cactus-pro"
-    if not pro_repo.exists():
-        return None
-    build_script = pro_repo / "apple" / "build.sh"
-    if not build_script.exists():
-        return None
+    """Convert model components to CoreML .mlpackage files for Apple NPU acceleration."""
+    import tempfile
+    from .apple_convert import convert_model_for_apple
 
-    if "gemma-4" in model_id.lower():
-        build_dir = pro_repo / "apple" / "build"
-        output_names = {
+    model_lower = model_id.lower()
+
+    if "gemma-4" in model_lower or "gemma4" in model_lower:
+        enc_types = {
             "gemma4-vision": "vision_encoder",
-            "gemma4-audio": "audio_encoder"
+            "gemma4-audio": "audio_encoder",
+            "gemma4-prefill": "model",
         }
+        build_dir = Path(tempfile.mkdtemp(prefix="cactus_apple_"))
         mlpackages = []
-        for enc_type, out_name in output_names.items():
-            result = subprocess.run(
-                ["bash", str(build_script), "--model", model_id, "--bits", bits, "--type", enc_type],
-                cwd=pro_repo,
-                capture_output=True,
-            )
-            mlpackage = build_dir / "model.mlpackage"
-            if result.returncode == 0 and mlpackage.exists():
-                dest = build_dir.parent / f"{out_name}.mlpackage"
-                if dest.exists():
-                    shutil.rmtree(dest)
-                shutil.move(str(mlpackage), str(dest))
-                mlpackages.append(dest)
+        try:
+            for enc_type, out_name in enc_types.items():
+                result = convert_model_for_apple(
+                    model_id, enc_type, build_dir, bits,
+                    token=os.environ.get("HF_TOKEN"),
+                )
+                if result is not None and result.exists():
+                    mlpackages.append(result)
+                else:
+                    print(f"Warning: {enc_type} conversion produced no output")
+        except Exception as exc:
+            print(f"Apple conversion failed: {exc}")
+            shutil.rmtree(build_dir, ignore_errors=True)
+            return None
         return mlpackages or None
 
-    result = subprocess.run(
-        ["bash", str(build_script), "--model", model_id, "--bits", bits],
-        cwd=pro_repo,
-        capture_output=True,
-    )
-    if result.returncode != 0:
-        return None
-    mlpackage = pro_repo / "apple" / "build" / "model.mlpackage"
-    return [mlpackage] if mlpackage.exists() else None
+    return None
 
 
 def get_prev_config(api, repo, current):
