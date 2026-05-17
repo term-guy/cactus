@@ -462,13 +462,14 @@ def convert_hf_model_weights(model, output_dir, precision='INT8', args=None):
                 saved_tensor_full_names.add(hf_key)
 
     if detected_model_type == 'gemma4':
-        pli_key = 'model.language_model.embed_tokens_per_layer.weight'
-        if pli_key in state_dict:
-            pli_tensor = state_dict[pli_key]
-            main_vocab = int(model_config.get('vocab_size', pli_tensor.shape[0]))
-            if pli_tensor.shape[0] < main_vocab:
-                pad_rows = main_vocab - pli_tensor.shape[0]
-                state_dict[pli_key] = torch.cat([pli_tensor, pli_tensor[0:1].expand(pad_rows, -1)], dim=0)
+        for pli_key in ('model.language_model.embed_tokens_per_layer.weight', 'embed_tokens_per_layer.weight'):
+            if pli_key in state_dict:
+                pli_tensor = state_dict[pli_key]
+                main_vocab = int(model_config.get('vocab_size', pli_tensor.shape[0]))
+                if pli_tensor.shape[0] < main_vocab:
+                    pad_rows = main_vocab - pli_tensor.shape[0]
+                    state_dict[pli_key] = torch.cat([pli_tensor, pli_tensor[0:1].expand(pad_rows, -1)], dim=0)
+                break
 
         for name, save_name in GEMMA4_GLOBAL_WEIGHTS:
             if name in state_dict:

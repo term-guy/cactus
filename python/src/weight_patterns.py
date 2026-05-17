@@ -114,8 +114,11 @@ GEMMA3N_AUDIO_TOWER_PREFIX = 'model.audio_tower.'
 
 GEMMA4_GLOBAL_WEIGHTS = [
     ('model.language_model.embed_tokens_per_layer.weight', 'embed_tokens_per_layer.weights'),
+    ('embed_tokens_per_layer.weight', 'embed_tokens_per_layer.weights'),
     ('model.language_model.per_layer_model_projection.weight', 'per_layer_model_proj.weights'),
+    ('per_layer_model_projection.weight', 'per_layer_model_proj.weights'),
     ('model.language_model.per_layer_projection_norm.weight', 'per_layer_proj_norm.weights'),
+    ('per_layer_projection_norm.weight', 'per_layer_proj_norm.weights'),
     ('model.embed_vision.embedding.weight', 'embed_vision_embedding.weights'),
     ('model.embed_vision.embedding_projection.weight', 'embed_vision_proj.weights'),
     ('model.embed_audio.embedding.weight', 'embed_audio_embedding.weights'),
