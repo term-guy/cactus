@@ -49,7 +49,9 @@ model.push_to_hub("username/my-lora-adapter")
 ### 2. Setup Cactus
 
 ```bash
-git clone https://github.com/cactus-compute/cactus && cd cactus && source ./setup
+brew install uv  # or install uv via https://astral.sh/uv/
+git clone https://github.com/cactus-compute/cactus && cd cactus
+source ./setup
 ```
 <img src="../assets/setup.png" alt="Logo" style="border-radius: 30px; width: 70%;">
 

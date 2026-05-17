@@ -230,8 +230,9 @@ cactus build               # default static lib
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │                                                                              │
 │ Step 0: if on Linux (Ubuntu/Debian)                                          │
-│ sudo apt-get install python3 python3-venv python3-pip cmake                  │
-│   build-essential libcurl4-openssl-dev                                       │
+│ sudo apt-get install python3.12 cmake                                        │
+│   build-essential libcurl4-openssl-dev pkg-config                            │
+│ curl -LsSf https://astral.sh/uv/install.sh | sh                              │
 │                                                                              │
 │ Step 1: clone and setup                                                      │
 │ git clone https://github.com/cactus-compute/cactus && cd cactus              │

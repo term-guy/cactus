@@ -9,6 +9,7 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VENV_DIR="$PROJECT_ROOT/venv"
 REQUIREMENTS_FILE="${CACTUS_REQUIREMENTS:-$PROJECT_ROOT/python/requirements.txt}"
 PARENT_REQUIREMENTS="$PROJECT_ROOT/../requirements.txt"
+PYTHON_VERSION="${CACTUS_PYTHON_VERSION:-3.12}"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -21,8 +22,11 @@ echo "============================================="
 echo ""
 
 echo -e "${BLUE}Step 1: Configuring git hooks for DCO...${NC}"
-git config core.hooksPath .githooks
-echo -e "${GREEN}✓ Git hooks configured${NC}"
+if git config core.hooksPath .githooks; then
+    echo -e "${GREEN}✓ Git hooks configured${NC}"
+else
+    echo -e "${YELLOW}Warning: failed to configure git hooks${NC}"
+fi
 
 name=$(git config user.name || true)
 email=$(git config user.email || true)
@@ -40,23 +44,23 @@ else
 fi
 
 echo ""
-echo -e "${BLUE}Step 2: Setting up Python virtual environment...${NC}"
+echo -e "${BLUE}Step 2: Setting up Python virtual environment with uv...${NC}"
 
-if ! command -v python3.12 &> /dev/null; then
-    echo -e "${RED}Error: python3.12 is not installed${NC}"
+if ! command -v uv &> /dev/null; then
+    echo -e "${RED}Error: uv is not installed${NC}"
     echo ""
-    echo "Please install python3.12:"
-    echo "  macOS:         brew install python@3.12"
-    echo "  Ubuntu/Debian: sudo apt-get install python3.12 python3.12-venv"
+    echo "Please install uv:"
+    echo "  macOS:         brew install uv"
+    echo "  Ubuntu/Debian: curl -LsSf https://astral.sh/uv/install.sh | sh"
     return 1
 fi
 
 if [ ! -d "$VENV_DIR" ]; then
-    if ! python3.12 -m venv "$VENV_DIR"; then
+    if ! uv venv --python "$PYTHON_VERSION" "$VENV_DIR" >/dev/null; then
         echo -e "${RED}Failed to create virtual environment${NC}"
-        echo "Please ensure python3.12-venv is installed:"
-        echo "  Ubuntu/Debian: sudo apt-get install python3.12-venv"
-        echo "  macOS: Should be included with Python3.12"
+        echo "uv can usually provision Python automatically, but if that fails try:"
+        echo "  macOS:         brew install python@3.12"
+        echo "  Ubuntu/Debian: sudo apt-get install python3.12"
         return 1
     fi
     echo -e "${GREEN}✓ Virtual environment created${NC}"
@@ -69,10 +73,8 @@ source "$VENV_DIR/bin/activate"
 echo ""
 echo -e "${BLUE}Step 3: Installing Python dependencies...${NC}"
 
-python3 -m pip install --upgrade pip -q
-
 if [ -f "$REQUIREMENTS_FILE" ]; then
-    if python3 -m pip install -r "$REQUIREMENTS_FILE" -q; then
+    if uv pip install --python "$VIRTUAL_ENV/bin/python" -r "$REQUIREMENTS_FILE" --quiet; then
         echo -e "${GREEN}✓ Dependencies installed${NC}"
     else
         echo -e "${RED}Failed to install dependencies${NC}"
@@ -95,7 +97,7 @@ if [ -f "$PARENT_REQUIREMENTS" ] && [ "$PARENT_REQUIREMENTS" != "$REQUIREMENTS_F
     echo ""
     echo -e "${BLUE}Detected parent repo requirements at: $PARENT_REQUIREMENTS${NC}"
     echo -e "${BLUE}Installing parent repo requirements...${NC}"
-    if python3 -m pip install -r "$PARENT_REQUIREMENTS" -q; then
+    if uv pip install --python "$VIRTUAL_ENV/bin/python" -r "$PARENT_REQUIREMENTS" --quiet; then
         echo -e "${GREEN}✓ Parent repo dependencies installed${NC}"
     else
         echo -e "${YELLOW}Warning: failed to install parent repo requirements${NC}"
@@ -105,7 +107,7 @@ fi
 echo ""
 echo -e "${BLUE}Step 4: Installing cactus CLI tools...${NC}"
 
-if python3 -m pip install -e "$PROJECT_ROOT/python" --quiet; then
+if uv pip install --python "$VIRTUAL_ENV/bin/python" -e "$PROJECT_ROOT/python" --quiet; then
     echo -e "${GREEN}✓ Cactus CLI installed${NC}"
 else
     echo -e "${RED}Failed to install cactus CLI${NC}"
