@@ -59,20 +59,27 @@ if(APPLE)
     find_library(SYSTEMCONFIGURATION_FRAMEWORK SystemConfiguration REQUIRED)
     find_library(CFNETWORK_FRAMEWORK CFNetwork REQUIRED)
 else()
-    if(NOT CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64|ARM64)$")
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64|ARM64)$")
+        set(CACTUS_IS_ARM64 TRUE)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=armv8.2-a+fp16+simd+dotprod+i8mm -pthread -Wall -Wextra -pedantic -O3 -Wno-missing-field-initializers")
+        add_compile_definitions(
+            __ARM_NEON=1
+            __ARM_FEATURE_FP16_VECTOR_ARITHMETIC=1
+            __ARM_FEATURE_DOTPROD=1
+            __ARM_FEATURE_MATMUL_INT8=1
+        )
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64)$")
+        set(CACTUS_IS_X86_64 TRUE)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse4.2 -mavx2 -mf16c -mfma -pthread -Wall -Wextra -O3 -Wno-missing-field-initializers -Wno-pedantic")
+
+        # Vendored arm_neon.h shim: implements used NEON intrinsics via SSE/AVX2/FMA/F16C.
+        include_directories(BEFORE "${CMAKE_CURRENT_SOURCE_DIR}/neon_compat")
+    else()
         message(FATAL_ERROR
             "Unsupported processor architecture: ${CMAKE_SYSTEM_PROCESSOR}\n"
-            "Cactus requires an ARM64/AArch64 processor (Apple Silicon, Android ARM, or ARM Linux).\n"
-            "x86/x86_64 is not supported — the engine relies on ARM NEON SIMD intrinsics."
+            "Cactus supports ARM64/AArch64 and x86_64."
         )
     endif()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=armv8.2-a+fp16+simd+dotprod+i8mm -pthread -Wall -Wextra -pedantic -O3 -Wno-missing-field-initializers")
-    add_compile_definitions(
-        __ARM_NEON=1
-        __ARM_FEATURE_FP16_VECTOR_ARITHMETIC=1
-        __ARM_FEATURE_DOTPROD=1
-        __ARM_FEATURE_MATMUL_INT8=1
-    )
 endif()
 
 file(GLOB ENGINE_SOURCES CONFIGURE_DEPENDS "engine/*.cpp")
@@ -147,19 +154,29 @@ function(configure_cactus_target target_name)
 endfunction()
 
 
-# I8MM support: compile kernel_i8mm.cpp with +i8mm
-set(I8MM_MARCH_FLAG "-march=armv8.2-a+fp16+simd+dotprod+i8mm")
-add_library(cactus_i8mm_obj OBJECT ${I8MM_SOURCE})
-target_include_directories(cactus_i8mm_obj PRIVATE ${COMMON_INCLUDES})
-target_compile_options(cactus_i8mm_obj PRIVATE ${I8MM_MARCH_FLAG})
-set_target_properties(cactus_i8mm_obj PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_compile_definitions(cactus_i8mm_obj PRIVATE CACTUS_COMPILE_I8MM __ARM_FEATURE_MATMUL_INT8=1)
-
-set(EXTRA_OBJECTS $<TARGET_OBJECTS:cactus_i8mm_obj>)
+if(APPLE OR CACTUS_IS_ARM64)
+    # I8MM support: compile kernel_i8mm.cpp with the +i8mm march extension.
+    # Excluded on x86 because vmmlaq_s32 is an ARM-only instruction with no
+    # portable SSE/AVX equivalent. cpu_has_i8mm() already returns false on x86,
+    # but the file cannot be compiled there at all.
+    set(I8MM_MARCH_FLAG "-march=armv8.2-a+fp16+simd+dotprod+i8mm")
+    add_library(cactus_i8mm_obj OBJECT ${I8MM_SOURCE})
+    target_include_directories(cactus_i8mm_obj PRIVATE ${COMMON_INCLUDES})
+    target_compile_options(cactus_i8mm_obj PRIVATE ${I8MM_MARCH_FLAG})
+    set_target_properties(cactus_i8mm_obj PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    target_compile_definitions(cactus_i8mm_obj PRIVATE CACTUS_COMPILE_I8MM __ARM_FEATURE_MATMUL_INT8=1)
+    set(EXTRA_OBJECTS $<TARGET_OBJECTS:cactus_i8mm_obj>)
+    set(CACTUS_I8MM_DEF CACTUS_COMPILE_I8MM)
+else()
+    set(EXTRA_OBJECTS "")
+    set(CACTUS_I8MM_DEF "")
+endif()
 
 add_library(cactus STATIC ${COMMON_SOURCES} ${EXTRA_OBJECTS})
 configure_cactus_target(cactus)
-target_compile_definitions(cactus PRIVATE CACTUS_COMPILE_I8MM)
+if(CACTUS_I8MM_DEF)
+    target_compile_definitions(cactus PRIVATE ${CACTUS_I8MM_DEF})
+endif()
 
 
 add_library(cactus_ffi SHARED ${COMMON_SOURCES} ${EXTRA_OBJECTS})
@@ -168,4 +185,6 @@ set_target_properties(cactus_ffi PROPERTIES
     POSITION_INDEPENDENT_CODE ON
     OUTPUT_NAME "cactus"
 )
-target_compile_definitions(cactus_ffi PRIVATE CACTUS_COMPILE_I8MM)
+if(CACTUS_I8MM_DEF)
+    target_compile_definitions(cactus_ffi PRIVATE ${CACTUS_I8MM_DEF})
+endif()

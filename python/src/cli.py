@@ -876,9 +876,17 @@ def cmd_build(args):
                 *sdl2_link,
             ]
         else:
+            machine = platform.machine().lower()
+            x86_flags = (
+                ["-msse4.2", "-mavx2", "-mf16c", "-mfma",
+                 f"-I{PROJECT_ROOT / 'cactus' / 'neon_compat'}"]
+                if machine in ("x86_64", "amd64")
+                else []
+            )
             cmd = [
                 compiler, "-std=c++20", "-O3",
                 f"-I{PROJECT_ROOT}",
+                *x86_flags,
                 *sdl2_flags,
                 str(asr_cpp),
                 str(lib_path),

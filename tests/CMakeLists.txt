@@ -28,6 +28,11 @@ else()
 endif()
 
 set(CACTUS_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../cactus)
+
+if(NOT APPLE AND CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64)$")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse4.2 -mavx2 -mf16c -mfma -O3 -Wno-missing-field-initializers -Wno-pedantic")
+    include_directories(BEFORE "${CACTUS_ROOT}/neon_compat")
+endif()
 set(CACTUS_BUILD_DIR ${CACTUS_ROOT}/build)
 
 find_library(CACTUS_LIB
