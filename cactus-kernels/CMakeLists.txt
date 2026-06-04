@@ -30,19 +30,33 @@ target_include_directories(cactus_kernels
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/libs
 )
 
-target_compile_options(cactus_kernels PUBLIC
-    -march=armv8.2-a+fp16+simd+dotprod+i8mm -pthread -O3
-)
-
-target_compile_definitions(cactus_kernels PUBLIC
-    __ARM_NEON=1
-    __ARM_FEATURE_FP16_VECTOR_ARITHMETIC=1
-    __ARM_FEATURE_DOTPROD=1
-    __ARM_FEATURE_MATMUL_INT8=1
-)
+if(APPLE OR CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64|ARM64)$")
+    target_compile_options(cactus_kernels PUBLIC
+        -march=armv8.2-a+fp16+simd+dotprod+i8mm -pthread -O3
+    )
+    target_compile_definitions(cactus_kernels PUBLIC
+        __ARM_NEON=1
+        __ARM_FEATURE_FP16_VECTOR_ARITHMETIC=1
+        __ARM_FEATURE_DOTPROD=1
+        __ARM_FEATURE_MATMUL_INT8=1
+    )
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64)$")
+    target_compile_options(cactus_kernels PUBLIC
+        -msse4.2 -mavx2 -mf16c -mfma -pthread -O3
+    )
+    # NEON → SSE/AVX2 compatibility shim for x86_64 builds
+    target_include_directories(cactus_kernels BEFORE PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/../cactus/neon_compat
+    )
+else()
+    message(FATAL_ERROR
+        "Unsupported processor architecture: ${CMAKE_SYSTEM_PROCESSOR}\n"
+        "Cactus supports ARM64/AArch64 and x86_64."
+    )
+endif()
 
 target_compile_options(cactus_kernels PRIVATE
-    -Wall -Wextra -pedantic -Wno-missing-field-initializers
+    -Wall -Wextra -Wno-missing-field-initializers
     $<$<CXX_COMPILER_ID:AppleClang,Clang>:-Wno-c99-extensions>
     $<$<CXX_COMPILER_ID:GNU>:-Wno-pedantic>
 )
